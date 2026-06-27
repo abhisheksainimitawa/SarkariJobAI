@@ -1,0 +1,17 @@
+name: Deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Koyeb
+        uses: koyeb/action-git-deploy@v1
+        with:
+          api-token: ${{ secrets.KOYEB_TOKEN }}
+          app-name: sarkarijobai-api
+          service-name: api
+          git-branch: main

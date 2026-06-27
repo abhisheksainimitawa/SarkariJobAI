@@ -1,0 +1,42 @@
+name: CI — API
+on:
+  push:
+    paths:
+      - 'apps/api/**'
+      - 'packages/schema/**'
+      - 'db/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jobai_test
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: postgres
+        ports:
+          - '5432:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r apps/api/requirements.txt && pip install -e packages/schema && pip install pytest pytest-asyncio
+      - name: Run migrations
+        run: cd db && alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:test@localhost/jobai_test
+          DATABASE_URL_SYNC: postgresql://postgres:test@localhost/jobai_test
+      - name: Run tests
+        run: pytest tests/api -v
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:test@localhost/jobai_test
+          DATABASE_URL_SYNC: postgresql://postgres:test@localhost/jobai_test
+          JWT_SECRET: test-secret-do-not-use-in-production

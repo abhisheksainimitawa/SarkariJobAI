@@ -1,0 +1,30 @@
+name: sarkarijobai-api
+services:
+  - name: api
+    type: web
+    git:
+      repository: github.com/abhisheksainimitawa/SarkariJobAI
+      branch: main
+      buildpack: python
+      build_command: pip install -r apps/api/requirements.txt && pip install -e packages/schema
+      run_command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000
+    instance_type: nano
+    regions:
+      - sin
+    ports:
+      - port: 8000
+        protocol: http
+    health_checks:
+      - path: /health
+        port: 8000
+    env:
+      - key: DATABASE_URL
+        secret: DATABASE_URL
+      - key: JWT_SECRET
+        secret: JWT_SECRET
+      - key: GOOGLE_AI_API_KEY
+        secret: GOOGLE_AI_API_KEY
+      - key: RESEND_API_KEY
+        secret: RESEND_API_KEY
+      - key: SENTRY_DSN
+        secret: SENTRY_DSN_API
