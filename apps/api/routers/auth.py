@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -12,8 +12,15 @@ from models.user import User
 from config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
 class RegisterRequest(BaseModel):
@@ -41,7 +48,7 @@ async def register(body: RegisterRequest, response: Response, db: AsyncSession =
     user = User(
         id=uuid4(),
         email=body.email,
-        hashed_password=pwd_context.hash(body.password),
+        hashed_password=hash_password(body.password),
         full_name=body.full_name,
     )
     db.add(user)
@@ -56,7 +63,7 @@ async def register(body: RegisterRequest, response: Response, db: AsyncSession =
 async def login(body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-    if not user or not pwd_context.verify(body.password, user.hashed_password):
+    if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_token(str(user.id))
