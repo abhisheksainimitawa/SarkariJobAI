@@ -11,10 +11,12 @@ import sys
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+ROOT = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "apps", "api"))
 
-from scripts.scrapers import ALL_SCRAPERS
-from scripts.extractor import extract_criteria
+from scrapers import ALL_SCRAPERS
+from extractor import extract_criteria
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 engine = create_async_engine(DATABASE_URL)
@@ -22,7 +24,7 @@ Session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def upsert_job(session, raw, dry_run: bool):
-    from apps.api.models.job import Job  # import here to avoid circular
+    from models.job import Job
 
     content_hash = hashlib.sha256(raw.raw_text.encode()).hexdigest()
 
@@ -62,7 +64,7 @@ async def upsert_job(session, raw, dry_run: bool):
 
 
 async def run_extraction(session, dry_run: bool):
-    from apps.api.models.job import Job
+    from models.job import Job
 
     result = await session.execute(
         sa.select(Job).where(Job.status == "pending_extraction").limit(100)
@@ -79,7 +81,7 @@ async def run_extraction(session, dry_run: bool):
             job.status = "extraction_failed"
         if not dry_run:
             await session.commit()
-        print(f"  {'[dry]' if dry_run else ''} {job.title[:60]} → {job.status}")
+        print(f"  {'[dry]' if dry_run else ''} {job.title[:60]} -> {job.status}")
 
 
 async def main(source_filter: str | None, dry_run: bool):

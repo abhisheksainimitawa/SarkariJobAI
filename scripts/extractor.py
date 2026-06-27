@@ -1,7 +1,11 @@
 import os
 import json
+import time
 import google.generativeai as genai
 from jobai_schema import JobCriteria
+
+# Try models in order until one works on the free tier
+MODELS_TO_TRY = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"]
 
 SYSTEM_PROMPT = """You are an expert at extracting structured eligibility criteria from Indian government job notifications.
 
@@ -21,26 +25,36 @@ Set low_confidence_fields for any field with confidence < 0.7.
 """
 
 
-def extract_criteria(raw_text: str) -> JobCriteria | None:
+def extract_criteria(raw_text: str, rate_limit_delay: float = 4.0) -> JobCriteria | None:
     api_key = os.environ.get("GOOGLE_AI_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_AI_API_KEY not set")
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.0-flash")
 
-    try:
-        response = model.generate_content(
-            [SYSTEM_PROMPT, f"Job notification text:\n\n{raw_text[:8000]}"],
-            generation_config=genai.GenerationConfig(
-                response_mime_type="application/json",
-            ),
-        )
-        data = json.loads(response.text)
-        return JobCriteria.model_validate(data)
-    except Exception as e:
-        print(f"[Extractor] failed: {e}")
-        return None
+    for model_name in MODELS_TO_TRY:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                [SYSTEM_PROMPT, f"Job notification text:\n\n{raw_text[:8000]}"],
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+            data = json.loads(response.text)
+            time.sleep(rate_limit_delay)  # respect free-tier RPM limit
+            return JobCriteria.model_validate(data)
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "quota" in err.lower():
+                print(f"[Extractor] {model_name} rate-limited, trying next model...")
+                time.sleep(60)  # wait a minute before trying next
+                continue
+            print(f"[Extractor] {model_name} failed: {e}")
+            return None
+
+    print("[Extractor] all models exhausted")
+    return None
 
 
 if __name__ == "__main__":

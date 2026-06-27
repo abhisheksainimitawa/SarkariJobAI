@@ -46,7 +46,17 @@ export default function ProfilePage() {
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<Form>({
     resolver: zodResolver(schema) as Resolver<Form>,
-    defaultValues: { experience_years: 0, is_pwd: false, is_ex_serviceman: false },
+    defaultValues: {
+      dob: "",
+      gender: "male" as const,
+      category: "Gen" as const,
+      state: "",
+      qualification_level: "graduate" as const,
+      qualification_percentage: undefined,
+      experience_years: 0,
+      is_pwd: false,
+      is_ex_serviceman: false,
+    },
   });
 
   useEffect(() => {
