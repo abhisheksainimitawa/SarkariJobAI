@@ -5,7 +5,7 @@ import google.generativeai as genai
 from jobai_schema import JobCriteria
 
 # Try models in order until one works on the free tier
-MODELS_TO_TRY = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b"]
+MODELS_TO_TRY = ["gemini-2.0-flash-lite", "gemini-2.0-flash"]
 
 SYSTEM_PROMPT = """You are an expert at extracting structured eligibility criteria from Indian government job notifications.
 

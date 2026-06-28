@@ -81,7 +81,8 @@ async def run_extraction(session, dry_run: bool):
             job.status = "extraction_failed"
         if not dry_run:
             await session.commit()
-        print(f"  {'[dry]' if dry_run else ''} {job.title[:60]} -> {job.status}")
+        safe_title = job.title[:60].encode(sys.stdout.encoding or "utf-8", errors="replace").decode(sys.stdout.encoding or "utf-8")
+        print(f"  {'[dry]' if dry_run else ''} {safe_title} -> {job.status}")
 
 
 async def main(source_filter: str | None, dry_run: bool):
